@@ -1,24 +1,23 @@
-- name: Modify EMB-3531 DTS
+- name: 🛠 提取并修改 EMB-3531 设备树
         run: |
           # 1. 安装设备树编译器 (DTC)
           sudo apt-get update && sudo apt-get install -y device-tree-compiler
 
-          # 2. 定位并处理内核包 (以日志中的 6.1.163 为例)
+          # 2. 定位并处理内核包 (基于日志 6.1.163)
           KERNEL_VER="6.1.163"
           echo "📥 正在下载内核包..."
           wget -q https://github.com/ophub/kernel/releases/download/kernel_stable/${KERNEL_VER}.tar.gz
           tar -zxf ${KERNEL_VER}.tar.gz
 
           # 3. 动态寻找并反编译 DTB
-          # 使用 find 模糊匹配避免路径死板
           TARGET_DTB=$(find . -name "*emb3531*.dtb" | head -n1)
           
           if [ -n "$TARGET_DTB" ]; then
             echo "✅ 找到目标设备树: $TARGET_DTB"
             dtc -I dtb -O dts "$TARGET_DTB" -o temp.dts
             
-            # 4. 【关键修改】在此处添加你的修改逻辑
-            # 示例：将 i2c0 的状态从 disabled 改为 okay
+            # 4. 【关键修改】在此处添加您的修改逻辑
+            # 示例：修复 I2C 节点状态
             sed -i '/i2c@ff3d0000 {/,/status/s/disabled/okay/' temp.dts
             
             # 5. 回编译为二进制并覆盖原文件
