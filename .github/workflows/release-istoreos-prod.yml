@@ -1,30 +1,30 @@
-- name: 🛠 提取并修改 EMB-3531 设备树
+- name: Modify EMB-3531 DTS
         run: |
           # 1. 安装设备树编译器 (DTC)
           sudo apt-get update && sudo apt-get install -y device-tree-compiler
 
-          # 2. 定位内核包 (基于你之前的日志，内核下载到 openwrt/out 或当前目录)
-          # 我们在打包 Action 运行前，先处理好 DTB
-          KERNEL_VERSION="6.1.163"
-          wget https://github.com/ophub/kernel/releases/download/kernel_stable/${KERNEL_VERSION}.tar.gz
-          tar -zxf ${KERNEL_VERSION}.tar.gz
+          # 2. 定位并处理内核包 (以日志中的 6.1.163 为例)
+          KERNEL_VER="6.1.163"
+          echo "📥 正在下载内核包..."
+          wget -q https://github.com/ophub/kernel/releases/download/kernel_stable/${KERNEL_VER}.tar.gz
+          tar -zxf ${KERNEL_VER}.tar.gz
 
-          # 3. 寻找并修改 DTB
-          # 使用 find 避免路径死板，锁定 emb3531 的 dtb
+          # 3. 动态寻找并反编译 DTB
+          # 使用 find 模糊匹配避免路径死板
           TARGET_DTB=$(find . -name "*emb3531*.dtb" | head -n1)
           
           if [ -n "$TARGET_DTB" ]; then
             echo "✅ 找到目标设备树: $TARGET_DTB"
-            # 反编译成文本
-            dtc -I dtb -O dts "$TARGET_DTB" -o temp_emb3531.dts
+            dtc -I dtb -O dts "$TARGET_DTB" -o temp.dts
             
-            # --- 在此处添加你的修改逻辑 (示例：强制开启某个节点) ---
-            # sed -i 's/status = "disabled";/status = "okay";/g' temp_emb3531.dts
+            # 4. 【关键修改】在此处添加你的修改逻辑
+            # 示例：将 i2c0 的状态从 disabled 改为 okay
+            sed -i '/i2c@ff3d0000 {/,/status/s/disabled/okay/' temp.dts
             
-            # 回编译成二进制
-            dtc -I dts -O dtb temp_emb3531.dts -o "$TARGET_DTB"
-            echo "🚀 DTB 修改完成并写回原位"
+            # 5. 回编译为二进制并覆盖原文件
+            dtc -I dts -O dtb temp.dts -o "$TARGET_DTB"
+            echo "🚀 DTB 修改并回编完成"
           else
-            echo "❌ 未找到 emb3531 的 DTB 文件"
+            echo "❌ 错误：未在内核包中找到 emb3531 相关的 DTB 文件"
             exit 1
           fi
