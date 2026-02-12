@@ -1,0 +1,30 @@
+- name: 🛠 提取并修改 EMB-3531 设备树
+        run: |
+          # 1. 安装设备树编译器 (DTC)
+          sudo apt-get update && sudo apt-get install -y device-tree-compiler
+
+          # 2. 定位内核包 (基于你之前的日志，内核下载到 openwrt/out 或当前目录)
+          # 我们在打包 Action 运行前，先处理好 DTB
+          KERNEL_VERSION="6.1.163"
+          wget https://github.com/ophub/kernel/releases/download/kernel_stable/${KERNEL_VERSION}.tar.gz
+          tar -zxf ${KERNEL_VERSION}.tar.gz
+
+          # 3. 寻找并修改 DTB
+          # 使用 find 避免路径死板，锁定 emb3531 的 dtb
+          TARGET_DTB=$(find . -name "*emb3531*.dtb" | head -n1)
+          
+          if [ -n "$TARGET_DTB" ]; then
+            echo "✅ 找到目标设备树: $TARGET_DTB"
+            # 反编译成文本
+            dtc -I dtb -O dts "$TARGET_DTB" -o temp_emb3531.dts
+            
+            # --- 在此处添加你的修改逻辑 (示例：强制开启某个节点) ---
+            # sed -i 's/status = "disabled";/status = "okay";/g' temp_emb3531.dts
+            
+            # 回编译成二进制
+            dtc -I dts -O dtb temp_emb3531.dts -o "$TARGET_DTB"
+            echo "🚀 DTB 修改完成并写回原位"
+          else
+            echo "❌ 未找到 emb3531 的 DTB 文件"
+            exit 1
+          fi
